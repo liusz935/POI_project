@@ -1,5 +1,7 @@
 # 按 双击 Shift 在所有地方搜索类、文件、工具窗口、操作和设置。
+import numpy
 
+from dict_and_sim_and_dis import *
 def get_new_id_data(dataset_add):
     dataname=dataset_add[:-4]
     data= []#装所有的数据
@@ -29,6 +31,9 @@ def get_new_id_data(dataset_add):
     user_list=list(set(user_list))
     venue_list=list(set(venue_list))
     venue_category_list=list(set(venue_category_list))
+    user_num=len(user_list)
+    venue_num=len(venue_list)
+    category_num=len(venue_category_list)
     print('用户数量：'+str(len(user_list))+'\n'+'地点数量：'+str(len(venue_list))+'\n'+'地点分类数量：'+str(len(venue_category_list))+'\n')
     #数据中的ID不能直接用，要新生成id，因为要生成用户、地点异构图，所以要统一用户和地点的ID，使其连续，地点类别不在图中，单独生成新id
     new_user_id_dict={}
@@ -67,7 +72,7 @@ def get_new_id_data(dataset_add):
         data[line_id][1]=new_venue_id_list_dict[data[line_id][1]]
         data[line_id][2]=new_venue_category_id_dict[data[line_id][2]]
     #返回数据
-    return data
+    return data,user_num,venue_num,category_num
     # 470	49bbd6c0f964a520f4531fe3	4bf58dd8d48988d127951735	Arts & Crafts Store	40.719810375488535	-74.00258103213994	-240	Tue Apr 03 18:00:09 +0000 2012
     # 1. User ID (anonymized)
     # 2. Venue ID (Foursquare)
@@ -83,6 +88,19 @@ def get_new_id_data(dataset_add):
 # 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
     dataset_add='dataset_tsmc2014/dataset_TSMC2014_TKY.txt'
-    new_id_data=get_new_id_data(dataset_add)
+    #dataset_add = 'dataset_tsmc2014/dataset_TSMC2014_NYC.txt'
+    dataset,user_num,venue_num,category_num=get_new_id_data(dataset_add)
+    # User_Venue_dict=get_User_Venue_dict(dataset)
+    # Venue_User_dict=get_Venue_User_dict(dataset)
+    # Category_Venue_dict=get_Category_Venue_dict(dataset)
+    # Venue_Category_dict=get_Venue_Category_dict(dataset)
+    # User_User_sim_tensor=get_User_User_sim_tensor(User_Venue_dict, user_num, venue_num)
+
+    Venue_Venue_distence_tensor=get_Venue_Venue_distence_tensor(dataset,user_num, venue_num)#耗时巨大，建议运行一次保存到文件，后续要用就读取文件
+    save_array=Venue_Venue_distence_tensor.numpy()
+    save_file_add=dataset_add[:-4]+'_Venue_Venue_distence_tensor_to_list_save.txt'
+    numpy.savetxt(save_file_add,save_array)
+
+    Venue_Venue_distence_tensor=numpy.loadtxt(save_file_add)
     #print(new_id_data)
 # 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
