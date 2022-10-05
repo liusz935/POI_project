@@ -1,5 +1,10 @@
 # 按 双击 Shift 在所有地方搜索类、文件、工具窗口、操作和设置。
 import numpy
+import json
+import pickle
+
+import torch
+
 
 from dict_and_sim_and_dis import *
 def get_new_id_data(dataset_add):
@@ -87,20 +92,37 @@ def get_new_id_data(dataset_add):
 
 # 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
+
     dataset_add='dataset_tsmc2014/dataset_TSMC2014_TKY.txt'
     #dataset_add = 'dataset_tsmc2014/dataset_TSMC2014_NYC.txt'
+    Distance_threshold=0.03#地点间的欧氏距离阈值，超过的地点不算临近点
+
     dataset,user_num,venue_num,category_num=get_new_id_data(dataset_add)
-    # User_Venue_dict=get_User_Venue_dict(dataset)
-    # Venue_User_dict=get_Venue_User_dict(dataset)
-    # Category_Venue_dict=get_Category_Venue_dict(dataset)
-    # Venue_Category_dict=get_Venue_Category_dict(dataset)
-    # User_User_sim_tensor=get_User_User_sim_tensor(User_Venue_dict, user_num, venue_num)
 
-    Venue_Venue_distence_tensor=get_Venue_Venue_distence_tensor(dataset,user_num, venue_num)#耗时巨大，建议运行一次保存到文件，后续要用就读取文件
-    save_array=Venue_Venue_distence_tensor.numpy()
-    save_file_add=dataset_add[:-4]+'_Venue_Venue_distence_tensor_to_list_save.txt'
-    numpy.savetxt(save_file_add,save_array)
+    User_Venue_dict=get_User_Venue_dict(dataset)#获取用户-地点的对应字典，用于找路径U——P
 
-    Venue_Venue_distence_tensor=numpy.loadtxt(save_file_add)
-    #print(new_id_data)
+    Venue_User_dict=get_Venue_User_dict(dataset)#获取地点-用户的对应字典，用于找路径P——U
+
+    Category_Venue_dict=get_Category_Venue_dict(dataset)#获取地点分类-地点的对应字典，用于找路径C-P
+
+    Venue_Category_dict=get_Venue_Category_dict(dataset)#获取地点-地点分类的对应字典，用于找路径P-C
+
+    User_User_sim_tensor=get_User_User_sim_tensor(User_Venue_dict, user_num, venue_num)#获取用户之间的余弦相似度矩阵UxU，用于给用户的邻居加上限制，只要高于0.8以上的邻居才可以加算作邻居用户
+
+
+    # Venue_Venue_threshold_tensor=get_Venue_Venue_threshold_tensor(dataset,user_num, venue_num,Distance_threshold)#用于给地点的近邻地点加上限制，只有距离较近的地点才可以算作临近地点，方法耗时巨大，1个小时以上，建议运行一次保存到文件，后续要用就读取文件#（已保存,不再使用）
+    save_file_add=dataset_add[:-4]+'_Venue_Venue_distence_tensor_to_list_save.pth'
+    # torch.save(Venue_Venue_threshold_tensor,save_file_add)#（已保存,不再使用）
+    Venue_Venue_threshold_tensor=torch.load(save_file_add)
+
+    # User_Venue_time_dict=get_User_Venue_time_dict(dataset)#耗时十分钟，建议运行一次保存到文件，（已保存,不再使用）
+    # json_str = json.dumps(User_Venue_time_dict)#（已保存,不再使用）
+    save_file_add = dataset_add[:-4] + '_User_Venue_time_dict.json'
+    # with open(save_file_add,'w',encoding='utf-8') as json_file:#（已保存,不再使用）
+    #     json_file.write(json_str)#保存到文件#（已保存,不再使用）
+    with open(save_file_add,'r',encoding='utf-8') as json_file:
+        User_Venue_time_dict = json.load(json_file)#读取文件
+
+    print('hi')
+
 # 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
