@@ -2,7 +2,10 @@ import math
 import pandas as pd
 import time
 import torch
+from tqdm import tqdm
+
 def get_User_Venue_dict(dataset):
+    print('getting get_User_Venue_dict')
     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
     User_Venue_dict={}#{User_id:[Venue_id,Venue_id],User_id:[....],.....}
     for line in dataset:
@@ -11,9 +14,12 @@ def get_User_Venue_dict(dataset):
         if User_Venue_dict.get(User_id,-1)==-1:
             User_Venue_dict[User_id]=[Venue_id]
         else:
-            User_Venue_dict[User_id].append(Venue_id)
+            if Venue_id not in User_Venue_dict[User_id]:
+                User_Venue_dict[User_id].append(Venue_id)
+    print('finish')
     return User_Venue_dict
 def get_Venue_User_dict(dataset):
+    print('getting Venue_User_dict')
     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
     Venue_User_dict={}
     for line in dataset:
@@ -22,9 +28,12 @@ def get_Venue_User_dict(dataset):
         if Venue_User_dict.get(Venue_id,-1)==-1:
             Venue_User_dict[Venue_id]=[User_id]
         else:
-            Venue_User_dict[Venue_id].append(User_id)
+            if User_id not in Venue_User_dict[Venue_id]:
+                Venue_User_dict[Venue_id].append(User_id)
+    print('finish')
     return Venue_User_dict
 def get_Category_Venue_dict(dataset):
+    print('getting Category_Venue_dict')
     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
     Category_Venue_dict={}
     for line in dataset:
@@ -33,9 +42,12 @@ def get_Category_Venue_dict(dataset):
         if Category_Venue_dict.get(Category_id,-1)==-1:
             Category_Venue_dict[Category_id]=[Venue_id]
         else:
-            Category_Venue_dict[Category_id].append(Venue_id)
+            if Venue_id not in Category_Venue_dict[Category_id]:
+                Category_Venue_dict[Category_id].append(Venue_id)
+    print('finish')
     return Category_Venue_dict
 def get_Venue_Category_dict(dataset):
+    print('getting Venue_Category_dict')
     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
     Venue_Category_dict={}
     for line in dataset:
@@ -44,9 +56,12 @@ def get_Venue_Category_dict(dataset):
         if Venue_Category_dict.get(Venue_id,-1)==-1:
             Venue_Category_dict[Venue_id]=[Category_id]
         else:
-            Venue_Category_dict[Venue_id].append(Category_id)
+            if Category_id not in Venue_Category_dict[Venue_id]:
+                Venue_Category_dict[Venue_id].append(Category_id)
+    print('finish')
     return Venue_Category_dict
 def get_User_User_sim_tensor(User_Venue_dict,user_num,venue_num):#计算用户中间的余弦相似度
+    print('getting User_User_sim_tensor')
     User_Venue_tensor=torch.zeros(user_num,venue_num)
     x_index = []
     y_index = []
@@ -65,10 +80,11 @@ def get_User_User_sim_tensor(User_Venue_dict,user_num,venue_num):#计算用户�
     temp_tensor_2=temp_tensor_1.T
     sim_B=torch.matmul(temp_tensor_1,temp_tensor_2)
     User_User_sim_tensor=sim_A/sim_B
+    print('finish')
     return User_User_sim_tensor
 def get_Venue_Venue_threshold_tensor(dataset,user_num,venue_num,Distance_threshold):
     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
-    Venue_Venue_threshold_tensor=torch.zeros(venue_num,venue_num,dtype=torch.bool)
+
     venue_coordinate_dict={}#{venue_id:[latitude,longitude]}
     for line in dataset:
         venue_id=line[1]
@@ -76,26 +92,48 @@ def get_Venue_Venue_threshold_tensor(dataset,user_num,venue_num,Distance_thresho
         longtitude=float(line[4])
         if venue_coordinate_dict.get(venue_id,-1)==-1:
             venue_coordinate_dict[venue_id]=[latitude,longtitude]
-    from tqdm import tqdm
-    for key_A,value_A in tqdm(venue_coordinate_dict.items()):#{venue_id:[latitude,longitude]}
-        for key_B,value_B in venue_coordinate_dict.items():
-            distence=math.sqrt(math.pow(value_A[0]-value_B[0],2)+math.pow(value_A[1]-value_B[1],2))
-            if distence<=Distance_threshold:
-                Venue_Venue_threshold_tensor[key_A - user_num][key_B - user_num] = True
-    # result=torch.zeros(venue_num,venue_num,dtype=torch.bool,device='cuda')
-    # for venue_id in tqdm(range(venue_num)):#{venue_id:[latitude,longitude]}
-    #     A=torch.tensor([venue_coordinate_dict[venue_id] for i in range(venue_num)]).cuda()
-    #     B = torch.zeros(venue_num, 2).cuda()
-    #     for venue_id_next in range(venue_num):
-    #         B[venue_id_next]=torch.tensor(venue_coordinate_dict[venue_id_next])
-    #     C=A-B
-    #     D=C*C
-    #     E=D[:,:1]
-    #     F=D[:,1:]
-    #     G=E+F
-    #     H=torch.sqrt(G)
-    #     print(H)
-    return Venue_Venue_threshold_tensor
+
+    print('getting Venue_Venue_threshold_tensor')
+
+    B = torch.zeros(venue_num, 2).cuda()
+    for venue_id_next in range(venue_num):
+        B[venue_id_next] = torch.tensor(venue_coordinate_dict[venue_id_next + user_num])
+
+    Venue_Venue_threshold_tensor=torch.zeros(venue_num,venue_num,dtype=torch.bool,device='cuda')#企图用tensor去算,结果发现更慢
+    for venue_id in tqdm(range(venue_num)):#{venue_id:[latitude,longitude]}
+        A=torch.tensor(venue_coordinate_dict[venue_id+user_num]).cuda()
+        A=A-B
+        A=A*A
+        E=A[:,:1]
+        F=A[:,1:]
+        A=E+F
+        A=torch.sqrt(A)
+        A=-(A-Distance_threshold)
+        A=torch.relu(A)
+        A=A.type(dtype=torch.bool)
+        Venue_Venue_threshold_tensor[venue_id]=torch.squeeze(A.T)
+
+    print('finish')
+    return Venue_Venue_threshold_tensor.cpu()
+# def get_Venue_Venue_threshold_tensor(dataset,user_num,venue_num,Distance_threshold):#过于缓慢，已废弃
+#     #[User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
+#     Venue_Venue_threshold_tensor=torch.zeros(venue_num,venue_num,dtype=torch.bool)
+#     venue_coordinate_dict={}#{venue_id:[latitude,longitude]}
+#     for line in dataset:
+#         venue_id=line[1]
+#         latitude=float(line[3])
+#         longtitude=float(line[4])
+#         if venue_coordinate_dict.get(venue_id,-1)==-1:
+#             venue_coordinate_dict[venue_id]=[latitude,longtitude]
+#     from tqdm import tqdm
+#     print('getting Venue_Venue_threshold_tensor')
+#     for key_A,value_A in tqdm(venue_coordinate_dict.items()):#{venue_id:[latitude,longitude]}
+#         for key_B,value_B in venue_coordinate_dict.items():
+#             distence=math.sqrt(math.pow(value_A[0]-value_B[0],2)+math.pow(value_A[1]-value_B[1],2))
+#             if distence<=Distance_threshold:
+#                 Venue_Venue_threshold_tensor[key_A - user_num][key_B - user_num] = True
+#     print('finish')
+#     return Venue_Venue_threshold_tensor
 
 def time_sort(user_venue_list):
     # utc_time= Tue Apr 03 21:42:44 +0000 2012
@@ -116,17 +154,22 @@ def time_sort(user_venue_list):
     return user_venue_to_second_list
 
 def get_User_Venue_time_dict(dataset):
+    print('getting User_Venue_time_dict')
     User_Venue_time_dict={}#{user_id:[venue_id,venue_id]}按时间顺序排序用户去过的地点
     # [User_ID,Venue_ID,Venue_category_ID,Latitude,Longitude,UTC_time]
-    for line in dataset:
+    print('step1/2')
+    for line in tqdm(dataset):
         venue_id=line[1]
         user_id=line[0]
         utc_time=line[5]
         if User_Venue_time_dict.get(user_id,-1)==-1:
             User_Venue_time_dict[user_id]=[[venue_id,utc_time]]
         else:
-            User_Venue_time_dict[user_id].append([venue_id,utc_time])
-    for key,value in User_Venue_time_dict.items():
+            if [venue_id,utc_time] not in User_Venue_time_dict[user_id]:
+                User_Venue_time_dict[user_id].append([venue_id, utc_time])
+    print('step2/2')
+    for key,value in tqdm(User_Venue_time_dict.items()):
         User_Venue_time_dict[key]=time_sort(value)
+    print('finish')
     return User_Venue_time_dict
 
